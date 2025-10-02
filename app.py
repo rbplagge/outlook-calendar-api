@@ -32,8 +32,10 @@ def get_env():
     cfg = {k: os.getenv(k) for k in REQUIRED_ENV_KEYS}
     missing = [k for k, v in cfg.items() if not v]
     if missing:
-        raise HTTPException(status_code=500,
-                            detail=f"Missing required env vars: {', '.join(missing)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Missing required env vars: {', '.join(missing)}"
+        )
     return cfg
 
 
@@ -59,8 +61,8 @@ def get_token(msal_app):
 async def gget(path, params=None):
     """Helper to call Microsoft Graph with a valid token."""
     cfg = get_env()
-    msal_app = make_msal(cfg)
-    token = get_token(msal_app)
+    msal_client = make_msal(cfg)
+    token = get_token(msal_client)
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.get(
             GRAPH + path,
@@ -93,8 +95,23 @@ async def ping(request: Request):
     """Debug endpoint: returns headers so we can confirm ChatGPT sends x-api-key."""
     return {"headers": dict(request.headers)}
 
+
+@app.get("/debug-key")
+async def debug_key():
+    """
+    Debug endpoint: shows whether API_KEY is present, its length, and a safe preview.
+    Does NOT reveal the full secret.
+    """
+    val = os.getenv("API_KEY") or ""
+    masked = (val[:3] + "..." + val[-3:]) if val else ""
+    return {
+        "api_key_present": bool(val),
+        "api_key_length": len(val),
+        "api_key_preview": masked,  # first 3 + last 3 chars
+    }
+
 # -----------------------------------------------------
-# Endpoints
+# Application endpoints
 # -----------------------------------------------------
 @app.get("/profile")
 async def profile(x_api_key: str = Header(..., alias="x-api-key")):
@@ -122,8 +139,12 @@ async def view(start: str, end: str, x_api_key: str = Header(..., alias="x-api-k
 
 
 @app.get("/stats")
-async def stats(start: str, end: str, groupBy: str = "category",
-                x_api_key: str = Header(..., alias="x-api-key")):
+async def stats(
+    start: str,
+    end: str,
+    groupBy: str = "category",
+    x_api_key: str = Header(..., alias="x-api-key")
+):
     require_key(x_api_key)
     cfg = get_env()
     user = cfg["TARGET_USER"]
@@ -147,4 +168,5 @@ async def stats(start: str, end: str, groupBy: str = "category",
         else:
             cats = ev.get("categories") or ["Uncategorized"]
             bucket[cats[0]] += hours(ev)
+
     return dict(bucket)
