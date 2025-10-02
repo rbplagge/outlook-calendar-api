@@ -2,11 +2,11 @@ import os
 import datetime
 import collections
 import httpx
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Request
 from msal import ConfidentialClientApplication
 
 # -----------------------------------------------------
-# Create FastAPI app (must come before any route!)
+# Create FastAPI app
 # -----------------------------------------------------
 app = FastAPI(title="Outlook Calendar API", version="1.0")
 
@@ -83,11 +83,15 @@ def require_key(x_api_key: str = Header(..., alias="x-api-key")):
 # -----------------------------------------------------
 @app.get("/env-check")
 async def env_check():
-    """
-    Returns which required env keys are present (True/False) without exposing values.
-    """
+    """Returns which required env keys are present (True/False) without exposing values."""
     present = {k: bool(os.getenv(k)) for k in REQUIRED_ENV_KEYS}
     return {"present": present}
+
+
+@app.get("/ping")
+async def ping(request: Request):
+    """Debug endpoint: returns headers so we can confirm ChatGPT sends x-api-key."""
+    return {"headers": dict(request.headers)}
 
 # -----------------------------------------------------
 # Endpoints
