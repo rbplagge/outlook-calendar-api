@@ -53,10 +53,10 @@ async def gget(path, params=None):
 # ---------------------------
 # API Key protection
 # ---------------------------
-api_key_header = APIKeyHeader(name="x-api-key", auto_error=False)
+api_key_header = APIKeyHeader(name="x-api-key", auto_error=True)
 
 def verify_api_key(x_api_key: str = Security(api_key_header)):
-    if not x_api_key or x_api_key != API_KEY:
+    if x_api_key != API_KEY:
         raise HTTPException(status_code=403, detail="Invalid or missing API Key")
     return True
 
